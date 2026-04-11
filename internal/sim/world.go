@@ -107,6 +107,11 @@ func (w *World) SortedUnitsByID() []Unit {
 	return sorted
 }
 
+// SpawnForGolden is an alias for SpawnUnit used by the golden export tool.
+func SpawnForGolden(w *World, owner uint8, pos fixed.Vec2, hp, speed fixed.Fix32) uint32 {
+	return w.SpawnUnit(owner, pos, hp, speed)
+}
+
 // RemoveDead removes all dead units.
 func (w *World) RemoveDead() {
 	alive := w.Units[:0]

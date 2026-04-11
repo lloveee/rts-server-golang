@@ -132,3 +132,10 @@ func Atan2(y, x Fix32) Fix32 {
 	}
 	return angle
 }
+
+// ExportSinTable returns a copy of the sinTable for golden test export.
+func ExportSinTable() []int32 {
+	out := make([]int32, sinTableSize)
+	copy(out, sinTable[:])
+	return out
+}

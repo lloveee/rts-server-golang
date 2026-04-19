@@ -91,13 +91,17 @@ func Unmarshal(data []byte) (*World, error) {
 	}
 
 	w := &World{
-		Tick:     tick,
-		Seed:     seed,
-		Rand:     &SplitMix64{state: randState},
-		NextID:   nextID,
-		MapSizeX: mapW,
-		MapSizeY: mapH,
-		Units:    make([]Unit, unitCount),
+		Tick:      tick,
+		Seed:      seed,
+		Rand:      &SplitMix64{state: randState},
+		NextID:    nextID,
+		MapSizeX:  mapW,
+		MapSizeY:  mapH,
+		Units:     make([]Unit, unitCount),
+		Buildings: make([]Building, 0),
+		Crystals:  make([]Crystal, 0),
+		Players:   make([]Player, 0),
+		NavGrid:   NewNavGrid(mapW.ToInt(), mapH.ToInt()),
 	}
 
 	for i := range w.Units {

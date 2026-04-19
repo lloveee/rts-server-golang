@@ -158,3 +158,50 @@ func TestNewWorld_InitialisesNewFields(t *testing.T) {
 		t.Errorf("NavGrid dims = (%d,%d), want (100,100)", w.NavGrid.W, w.NavGrid.H)
 	}
 }
+
+func TestHash_SensitiveToUnitType(t *testing.T) {
+	wA := NewWorld(42, 100, 100)
+	wA.SpawnUnit(0, fixed.VInt(10, 10), fixed.One, fixed.Half)
+	wB := NewWorld(42, 100, 100)
+	wB.SpawnUnit(0, fixed.VInt(10, 10), fixed.One, fixed.Half)
+	wB.Units[0].Type = UnitSoldier
+
+	if Hash(wA) == Hash(wB) {
+		t.Fatal("Hash must differ when Unit.Type differs")
+	}
+}
+
+func TestHash_SensitiveToBuildingCount(t *testing.T) {
+	wA := NewWorld(42, 100, 100)
+	wB := NewWorld(42, 100, 100)
+	wB.Buildings = append(wB.Buildings, Building{ID: 1, Owner: 0, Type: BldHQ})
+
+	if Hash(wA) == Hash(wB) {
+		t.Fatal("Hash must differ when Buildings count differs")
+	}
+}
+
+func TestHash_SensitiveToNavGridDims(t *testing.T) {
+	wA := NewWorld(42, 100, 100)
+	wB := NewWorld(42, 100, 100)
+	wB.NavGrid = NewNavGrid(50, 50)
+
+	if Hash(wA) == Hash(wB) {
+		t.Fatal("Hash must differ when NavGrid dims differ")
+	}
+}
+
+func TestHash_EmptyWorld_Deterministic(t *testing.T) {
+	// Same seed + same (empty) world → identical hash across 10 rebuilds.
+	hashes := make([]uint64, 10)
+	for i := range hashes {
+		hashes[i] = Hash(NewWorld(42, 100, 100))
+	}
+	for i := 1; i < len(hashes); i++ {
+		if hashes[i] != hashes[0] {
+			t.Fatalf("empty-world hash drift: run %d = %#x, run 0 = %#x",
+				i, hashes[i], hashes[0])
+		}
+	}
+	t.Logf("empty-world hash (seed=42, 100x100): %016x", hashes[0])
+}

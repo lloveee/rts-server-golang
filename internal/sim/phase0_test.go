@@ -117,3 +117,20 @@ func TestPlayer_ZeroValueFields(t *testing.T) {
 			p.ID, p.Crystal, p.Surrendered)
 	}
 }
+
+func TestNavGrid_Factory_100x100(t *testing.T) {
+	g := NewNavGrid(100, 100)
+	if g.W != 100 || g.H != 100 {
+		t.Errorf("NavGrid dims = (%d,%d), want (100,100)", g.W, g.H)
+	}
+	// 100*100 = 10000 bits → (10000 + 63) / 64 = 157 uint64 words
+	wantWords := 157
+	if got := g.BlockedWords(); got != wantWords {
+		t.Errorf("BlockedWords = %d, want %d", got, wantWords)
+	}
+	for i, w := range g.Blocked {
+		if w != 0 {
+			t.Errorf("Blocked[%d] = %#x, want 0 (fresh NavGrid should be all-free)", i, w)
+		}
+	}
+}

@@ -205,3 +205,68 @@ func TestHash_EmptyWorld_Deterministic(t *testing.T) {
 	}
 	t.Logf("empty-world hash (seed=42, 100x100): %016x", hashes[0])
 }
+
+func TestSnapshot_RoundTrip_ExtendedFields(t *testing.T) {
+	w := NewWorld(42, 100, 100)
+
+	w.Units = append(w.Units, Unit{
+		ID: 1, Owner: 0, Type: UnitSoldier,
+		Pos:              fixed.VInt(10, 10),
+		HP:               fixed.FromInt(5),
+		MaxHP:            fixed.FromInt(5),
+		Speed:            fixed.Half,
+		Range:            fixed.FromInt(2),
+		Damage:           fixed.Half,
+		VisionRange:      fixed.FromInt(6),
+		CarryAmount:      0,
+		State:            UnitMoving,
+		TargetID:         0,
+		MoveTo:           fixed.VInt(20, 20),
+		AttackMoveTarget: fixed.VInt(30, 30),
+		Path: []fixed.Vec2{
+			fixed.VInt(15, 15),
+			fixed.VInt(20, 20),
+		},
+	})
+	w.Buildings = append(w.Buildings, Building{
+		ID: 2, Owner: 0, Type: BldHQ, SizeCells: 4,
+		Pos: fixed.VInt(5, 5), HP: fixed.FromInt(50), MaxHP: fixed.FromInt(50),
+		State: BldReady, ConstructProgress: fixed.One, RallyPoint: fixed.VInt(10, 5),
+		ProductionQueue: []QueueItem{
+			{UnitType: UnitWorker, TicksLeft: 100, StartTick: 10},
+			{UnitType: UnitSoldier, TicksLeft: 200, StartTick: 10},
+		},
+	})
+	w.Crystals = append(w.Crystals, Crystal{ID: 3, Pos: fixed.VInt(50, 50), Remaining: fixed.FromInt(500)})
+	w.Players = append(w.Players,
+		Player{ID: 0, Crystal: fixed.FromInt(100), Surrendered: false},
+		Player{ID: 1, Crystal: fixed.FromInt(80), Surrendered: true},
+	)
+	w.NavGrid.Blocked[0] = 0x00000000_0000_FF01
+	w.NavGrid.Blocked[156] = 0x8000_0000_0000_0001
+
+	h1 := Hash(w)
+	data := Marshal(w)
+	w2, err := Unmarshal(data)
+	if err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	h2 := Hash(w2)
+	if h1 != h2 {
+		t.Fatalf("hash mismatch after round-trip: %#x vs %#x", h1, h2)
+	}
+}
+
+func TestSnapshot_RoundTrip_EmptyWorld(t *testing.T) {
+	w := NewWorld(42, 100, 100)
+	h1 := Hash(w)
+	data := Marshal(w)
+	w2, err := Unmarshal(data)
+	if err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	h2 := Hash(w2)
+	if h1 != h2 {
+		t.Fatalf("empty-world hash diverged: %#x vs %#x", h1, h2)
+	}
+}

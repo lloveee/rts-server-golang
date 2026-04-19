@@ -61,3 +61,44 @@ func TestUnit_ZeroValueFields(t *testing.T) {
 		t.Errorf("Unit.AttackMoveTarget zero = %v, want zero vec", u.AttackMoveTarget)
 	}
 }
+
+func TestBuilding_ZeroValueFields(t *testing.T) {
+	var b Building
+	if b.State != BldConstructing {
+		t.Errorf("Building.State zero = %d, want BldConstructing (0)", b.State)
+	}
+	if b.Type != 0 {
+		t.Errorf("Building.Type zero = %d, want 0", b.Type)
+	}
+	if b.ProductionQueue != nil {
+		t.Errorf("Building.ProductionQueue zero = %v, want nil", b.ProductionQueue)
+	}
+}
+
+func TestBuildingType_Values(t *testing.T) {
+	cases := []struct {
+		got  BuildingType
+		want uint8
+	}{
+		{BldHQ, 1}, {BldBarracks, 2}, {BldArchery, 3}, {BldStable, 4},
+	}
+	for _, c := range cases {
+		if uint8(c.got) != c.want {
+			t.Errorf("BuildingType = %d, want %d", c.got, c.want)
+		}
+	}
+}
+
+func TestBuildingState_Values(t *testing.T) {
+	cases := []struct {
+		got  BuildingState
+		want uint8
+	}{
+		{BldConstructing, 0}, {BldReady, 1}, {BldDead, 2},
+	}
+	for _, c := range cases {
+		if uint8(c.got) != c.want {
+			t.Errorf("BuildingState = %d, want %d", c.got, c.want)
+		}
+	}
+}

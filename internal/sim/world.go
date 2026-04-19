@@ -28,17 +28,24 @@ const (
 	UnitCavalry UnitType = 4
 )
 
-// Unit is the minimal RTS unit for lockstep simulation.
+// Unit is the RTS unit state for lockstep simulation.
 type Unit struct {
-	ID       uint32
-	Owner    uint8
-	Pos      fixed.Vec2
-	HP       fixed.Fix32
-	MaxHP    fixed.Fix32
-	Speed    fixed.Fix32 // distance per tick
-	State    UnitState
-	TargetID uint32      // attack target (0 = none)
-	MoveTo   fixed.Vec2  // move destination
+	ID               uint32
+	Owner            uint8
+	Type             UnitType
+	Pos              fixed.Vec2
+	HP               fixed.Fix32
+	MaxHP            fixed.Fix32
+	Speed            fixed.Fix32
+	Range            fixed.Fix32
+	Damage           fixed.Fix32
+	VisionRange      fixed.Fix32
+	CarryAmount      fixed.Fix32
+	State            UnitState
+	TargetID         uint32
+	MoveTo           fixed.Vec2
+	AttackMoveTarget fixed.Vec2
+	Path             []fixed.Vec2
 }
 
 // CmdOp identifies the type of command.

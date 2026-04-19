@@ -9,9 +9,23 @@ import (
 type UnitState uint8
 
 const (
-	UnitIdle   UnitState = 0
-	UnitMoving UnitState = 1
-	UnitDead   UnitState = 2
+	UnitIdle      UnitState = 0
+	UnitMoving    UnitState = 1
+	UnitAttacking UnitState = 2
+	UnitMining    UnitState = 3
+	UnitReturning UnitState = 4
+	UnitBuilding  UnitState = 5
+	UnitDead      UnitState = 6
+)
+
+// UnitType enumerates the 4 Sub-2 unit archetypes.
+type UnitType uint8
+
+const (
+	UnitWorker  UnitType = 1
+	UnitSoldier UnitType = 2
+	UnitArcher  UnitType = 3
+	UnitCavalry UnitType = 4
 )
 
 // Unit is the minimal RTS unit for lockstep simulation.

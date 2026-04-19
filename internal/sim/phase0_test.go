@@ -102,3 +102,18 @@ func TestBuildingState_Values(t *testing.T) {
 		}
 	}
 }
+
+func TestCrystal_ZeroValueFields(t *testing.T) {
+	var c Crystal
+	if c.ID != 0 || c.Remaining != 0 {
+		t.Errorf("Crystal zero-values non-zero: id=%d rem=%v", c.ID, c.Remaining)
+	}
+}
+
+func TestPlayer_ZeroValueFields(t *testing.T) {
+	var p Player
+	if p.ID != 0 || p.Crystal != 0 || p.Surrendered {
+		t.Errorf("Player zero-values non-default: id=%d crystal=%v surr=%v",
+			p.ID, p.Crystal, p.Surrendered)
+	}
+}

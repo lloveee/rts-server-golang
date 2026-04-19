@@ -68,26 +68,40 @@ type Cmd struct {
 }
 
 // World holds the entire deterministic game state.
+// ID pool (NextID) is shared across Units, Buildings, and Crystals — any new
+// entity takes the next value, so IDs are globally unique within a World.
 type World struct {
 	Tick     uint32
 	Seed     uint64
 	Rand     *SplitMix64
-	Units    []Unit
 	NextID   uint32
-	MapSizeX fixed.Fix32 // map width
-	MapSizeY fixed.Fix32 // map height
+	MapSizeX fixed.Fix32
+	MapSizeY fixed.Fix32
+
+	Units     []Unit
+	Buildings []Building
+	Crystals  []Crystal
+	Players   []Player
+
+	NavGrid *NavGrid
 }
 
 // NewWorld creates a new world with the given seed and map dimensions.
+// Buildings/Crystals/Players start as empty (non-nil) slices; NavGrid is
+// allocated 1:1 with map dimensions, all cells passable.
 func NewWorld(seed uint64, mapW, mapH int32) *World {
 	return &World{
-		Tick:     0,
-		Seed:     seed,
-		Rand:     NewRand(seed),
-		Units:    make([]Unit, 0, 64),
-		NextID:   1,
-		MapSizeX: fixed.FromInt(mapW),
-		MapSizeY: fixed.FromInt(mapH),
+		Tick:      0,
+		Seed:      seed,
+		Rand:      NewRand(seed),
+		Units:     make([]Unit, 0, 64),
+		Buildings: make([]Building, 0, 8),
+		Crystals:  make([]Crystal, 0, 16),
+		Players:   make([]Player, 0, 4),
+		NextID:    1,
+		MapSizeX:  fixed.FromInt(mapW),
+		MapSizeY:  fixed.FromInt(mapH),
+		NavGrid:   NewNavGrid(mapW, mapH),
 	}
 }
 

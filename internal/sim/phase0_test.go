@@ -134,3 +134,27 @@ func TestNavGrid_Factory_100x100(t *testing.T) {
 		}
 	}
 }
+
+func TestNewWorld_InitialisesNewFields(t *testing.T) {
+	w := NewWorld(42, 100, 100)
+	if w.Buildings == nil {
+		t.Error("Buildings should be non-nil empty slice")
+	}
+	if len(w.Buildings) != 0 {
+		t.Errorf("len(Buildings) = %d, want 0", len(w.Buildings))
+	}
+	if w.Crystals == nil || len(w.Crystals) != 0 {
+		t.Errorf("Crystals should be non-nil empty slice; got len=%d nil=%v",
+			len(w.Crystals), w.Crystals == nil)
+	}
+	if w.Players == nil || len(w.Players) != 0 {
+		t.Errorf("Players should be non-nil empty slice; got len=%d nil=%v",
+			len(w.Players), w.Players == nil)
+	}
+	if w.NavGrid == nil {
+		t.Fatal("NavGrid must be initialised by NewWorld")
+	}
+	if w.NavGrid.W != 100 || w.NavGrid.H != 100 {
+		t.Errorf("NavGrid dims = (%d,%d), want (100,100)", w.NavGrid.W, w.NavGrid.H)
+	}
+}

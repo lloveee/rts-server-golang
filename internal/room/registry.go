@@ -46,7 +46,6 @@ func (r *Registry) GetOrCreate(roomID string) *lockstep.Room {
 	cfg.RoomID = roomID
 	cfg.Logger = r.log
 	room := lockstep.NewRoom(cfg)
-	room.SpawnInitialUnits(5) // 5 units per player
 
 	ctx, cancel := context.WithCancel(context.Background())
 	r.rooms[roomID] = &Entry{Room: room, Cancel: cancel}

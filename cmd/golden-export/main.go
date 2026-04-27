@@ -40,6 +40,7 @@ type GoldenData struct {
 	SplitMixSequence []uint64         `json:"splitMixSequence"`
 	Vec2Tests        []Vec2Test       `json:"vec2Tests"`
 	Atan2Tests       []Atan2Test      `json:"atan2Tests"`
+	EmptyWorldHash   string           `json:"emptyWorldHash"`
 }
 
 type Vec2Test struct {
@@ -119,6 +120,11 @@ func main() {
 		{int32(0), int32(one), int32(fixed.Atan2(0, one))},
 		{int32(one), int32(0), int32(fixed.Atan2(one, 0))},
 	}
+
+	// Phase-0 cross-engine parity anchor: hash of a fresh World with new
+	// Buildings/Crystals/Players/NavGrid fields and zero entities.
+	emptyWorld := sim.NewWorld(g.Seed, g.MapW, g.MapH)
+	g.EmptyWorldHash = fmt.Sprintf("%016x", sim.Hash(emptyWorld))
 
 	// Build world and run simulation
 	w := sim.NewWorld(g.Seed, g.MapW, g.MapH)

@@ -44,6 +44,7 @@ type Room struct {
 	players   []*PlayerSlot
 	tick      uint32
 	tickInterval time.Duration
+	started   bool // set true once all players have joined and initial world is spawned
 
 	// Inbox for messages from connection reader goroutines.
 	Inbox chan RoomMsg
@@ -106,14 +107,30 @@ func (r *Room) AddPlayer(conn *transport.Conn) (uint8, bool) {
 	return 0, false
 }
 
-// SpawnInitialUnits creates starting units for each player.
-func (r *Room) SpawnInitialUnits(unitsPerPlayer int) {
+// SpawnInitialWorld sets up the starting game state for all players.
+// Each player gets: 1xHQ, 3xWorkers, 8xCrystals, starting crystal=200.
+func (r *Room) SpawnInitialWorld() {
 	for pid := 0; pid < r.cfg.PlayerCount; pid++ {
-		for i := 0; i < unitsPerPlayer; i++ {
-			x := fixed.FromInt(int32(10 + pid*80))
-			y := fixed.FromInt(int32(10 + i*3))
-			r.world.SpawnUnit(uint8(pid), fixed.V(x, y),
-				fixed.FromInt(10), fixed.FromFloat64(0.5))
+		playerID := uint8(pid)
+		hqX := int32(10)
+		if pid == 1 {
+			hqX = 90
+		}
+		hqPos := fixed.VInt(hqX, 45)
+		r.world.SpawnBuilding(playerID, sim.BldHQ, hqPos)
+
+		stats := sim.UnitStatTable[sim.UnitWorker]
+		for w := int32(0); w < 3; w++ {
+			workerX := hqX + 3 + w
+			workerY := int32(45) + w
+			r.world.SpawnUnit(playerID,
+				fixed.VInt(workerX, workerY),
+				stats.MaxHP, stats.Speed)
+			r.world.Units[len(r.world.Units)-1].Type = sim.UnitWorker
+		}
+
+		for _, pos := range sim.CrystalPositions(playerID) {
+			r.world.SpawnCrystal(pos)
 		}
 	}
 }
@@ -205,6 +222,29 @@ func (r *Room) handleMsg(msg RoomMsg) {
 }
 
 func (r *Room) sealTick() {
+	if !r.started {
+		allJoined := true
+		for _, p := range r.players {
+			if p == nil || !p.Joined {
+				allJoined = false
+				break
+			}
+		}
+		if !allJoined {
+			return // don't tick until room is full
+		}
+		r.started = true
+		r.SpawnInitialWorld()
+
+		// Set up players list with starting crystal.
+		r.world.Players = make([]sim.Player, r.cfg.PlayerCount)
+		for i := range r.world.Players {
+			r.world.Players[i] = sim.Player{ID: uint8(i)}
+		}
+		r.world.Players[0].Crystal = fixed.FromInt(200)
+		r.world.Players[1].Crystal = fixed.FromInt(200)
+	}
+
 	r.tick++
 
 	// Seal commands for this tick.

@@ -52,9 +52,13 @@ type Unit struct {
 type CmdOp uint8
 
 const (
-	CmdMove   CmdOp = 1
-	CmdAttack CmdOp = 2
-	CmdStop   CmdOp = 3
+	CmdMove       CmdOp = 1
+	CmdAttack     CmdOp = 2
+	CmdStop       CmdOp = 3
+	CmdAttackMove CmdOp = 4
+	CmdBuild      CmdOp = 5
+	CmdTrain      CmdOp = 6
+	CmdSurrender  CmdOp = 7
 )
 
 // Cmd is a player command to be executed at a specific tick.

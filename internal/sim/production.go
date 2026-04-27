@@ -59,26 +59,27 @@ func tickProduction(w *World) {
 	}
 }
 
-// findEdgeSpawnCell finds a free cell on the perimeter of the building's AABB.
-// Scans all edge cells (where at least one coordinate is on the AABB boundary).
+// findEdgeSpawnCell finds a free cell immediately outside the building's AABB.
+// Scans the one-cell perimeter ring outside the AABB on all four sides (including corners).
 func findEdgeSpawnCell(w *World, b *Building) *fixed.Vec2 {
 	size := int32(b.SizeCells)
 	startX := b.Pos.X.ToInt()
 	startY := b.Pos.Y.ToInt()
 
-	for dx := int32(0); dx < size; dx++ {
-		for dy := int32(0); dy < size; dy++ {
-			// Only check edge cells (at least one side on perimeter).
-			if dx > 0 && dx < size-1 && dy > 0 && dy < size-1 {
-				continue
+	// Scan cells from one row/col before the AABB to one row/col after.
+	// Skip cells strictly inside the AABB (they are occupied by the building).
+	for dx := int32(-1); dx <= size; dx++ {
+		for dy := int32(-1); dy <= size; dy++ {
+			if dx >= 0 && dx < size && dy >= 0 && dy < size {
+				continue // inside the building AABB
 			}
 			cx := startX + dx
 			cy := startY + dy
 			if cx < 0 || cy < 0 || cx >= w.NavGrid.W || cy >= w.NavGrid.H {
 				continue
 			}
-			pos := fixed.VInt(cx, cy)
 			if !isCellBlocked(w, cx, cy) {
+				pos := fixed.VInt(cx, cy)
 				return &pos
 			}
 		}

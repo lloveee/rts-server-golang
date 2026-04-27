@@ -10,12 +10,13 @@ package fixed
 
 const (
 	Shift = 16
+	Zero  = Fix32(0)                   // 0.0
 	One   = Fix32(1 << Shift)          // 1.0
 	Half  = Fix32(1 << (Shift - 1))    // 0.5
 	Max   = Fix32(0x7FFFFFFF)          // ~32767.999985
 	Min   = Fix32(-0x80000000)         // -32768.0
 	Pi    = Fix32(205887)              // π ≈ 3.14159
-	TwoPi = Fix32(411775)             // 2π ≈ 6.28318
+	TwoPi = Fix32(411775)              // 2π ≈ 6.28318
 	Eps   = Fix32(1)                   // smallest representable positive value
 )
 

@@ -37,7 +37,7 @@ type GoldenData struct {
 	TickHashes       []string         `json:"tickHashes"`
 	FixedArithTests  []FixedArithTest `json:"fixedArithTests"`
 	SinTableRaw      []int32          `json:"sinTableRaw"`
-	SplitMixSequence []uint64         `json:"splitMixSequence"`
+	SplitMixSequence []string         `json:"splitMixSequence"`
 	Vec2Tests        []Vec2Test       `json:"vec2Tests"`
 	Atan2Tests       []Atan2Test      `json:"atan2Tests"`
 	EmptyWorldHash   string           `json:"emptyWorldHash"`
@@ -93,11 +93,11 @@ func main() {
 	// Sin table (all 1024 values)
 	g.SinTableRaw = fixed.ExportSinTable()
 
-	// SplitMix64 first 100 values from seed=42
+	// SplitMix64 first 100 values from seed=42 (hex to avoid JSON uint64 overflow)
 	rng := sim.NewRand(42)
-	g.SplitMixSequence = make([]uint64, 100)
+	g.SplitMixSequence = make([]string, 100)
 	for i := range g.SplitMixSequence {
-		g.SplitMixSequence[i] = rng.Next()
+		g.SplitMixSequence[i] = fmt.Sprintf("%016x", rng.Next())
 	}
 
 	// Vec2 tests

@@ -40,7 +40,8 @@ type GoldenData struct {
 	SplitMixSequence []string         `json:"splitMixSequence"`
 	Vec2Tests        []Vec2Test       `json:"vec2Tests"`
 	Atan2Tests       []Atan2Test      `json:"atan2Tests"`
-	EmptyWorldHash   string           `json:"emptyWorldHash"`
+	EmptyWorldHash      string           `json:"emptyWorldHash"`
+	EconomyInitialHash  string           `json:"economyInitialHash"`
 }
 
 type Vec2Test struct {
@@ -125,6 +126,28 @@ func main() {
 	// Buildings/Crystals/Players/NavGrid fields and zero entities.
 	emptyWorld := sim.NewWorld(g.Seed, g.MapW, g.MapH)
 	g.EmptyWorldHash = fmt.Sprintf("%016x", sim.Hash(emptyWorld))
+
+	// Phase 1 economy initial state: spawn HQ + Workers + Crystals + set player crystal.
+	w2 := sim.NewWorld(g.Seed, g.MapW, g.MapH)
+	w2.Players = []sim.Player{{ID: 0, Crystal: fixed.FromInt(200)}, {ID: 1, Crystal: fixed.FromInt(200)}}
+	w2.SpawnBuilding(0, sim.BldHQ, fixed.VInt(10, 45))
+	w2.SpawnBuilding(1, sim.BldHQ, fixed.VInt(90, 45))
+	for _, pos := range sim.CrystalPositions(0) {
+		w2.SpawnCrystal(pos)
+	}
+	for _, pos := range sim.CrystalPositions(1) {
+		w2.SpawnCrystal(pos)
+	}
+	stats := sim.UnitStatTable[sim.UnitWorker]
+	for i := 0; i < 3; i++ {
+		id := w2.SpawnUnit(0, fixed.VInt(int32(13+i), int32(45+i)), stats.MaxHP, stats.Speed)
+		w2.Units[len(w2.Units)-1].Type = sim.UnitWorker
+		_ = id
+		id = w2.SpawnUnit(1, fixed.VInt(int32(93-i), int32(45+i)), stats.MaxHP, stats.Speed)
+		w2.Units[len(w2.Units)-1].Type = sim.UnitWorker
+		_ = id
+	}
+	g.EconomyInitialHash = fmt.Sprintf("%016x", sim.Hash(w2))
 
 	// Build world and run simulation
 	w := sim.NewWorld(g.Seed, g.MapW, g.MapH)

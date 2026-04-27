@@ -16,14 +16,11 @@ var AttackDamage = fixed.FromFloat64(0.5)
 func Step(w *World, cmds []Cmd) {
 	w.Tick++
 
-	// Phase 1: Apply commands (sorted by UnitID for determinism).
-	// Commands are already grouped per-tick by the lockstep layer.
 	applyCommands(w, cmds)
 
-	// Phase 2: Update units in ID order.
-	// We iterate over indices (not a copy) and update in-place.
-	// Sort first to ensure deterministic order.
 	sortUnitsByID(w)
+	sortBuildingsByID(w)
+	sortCrystalsByID(w)
 
 	for i := range w.Units {
 		u := &w.Units[i]
@@ -33,36 +30,67 @@ func Step(w *World, cmds []Cmd) {
 		switch u.State {
 		case UnitMoving:
 			stepMove(w, u)
+		case UnitMining:
+			stepMining(w, u)
+		case UnitReturning:
+			stepReturning(w, u)
+		case UnitBuilding:
+			// Phase 3 — no-op for now
+		case UnitAttacking:
+			stepAttack(w, u)
 		case UnitIdle:
 			stepAttack(w, u)
 		}
 	}
 
-	// Phase 3: Remove dead units.
+	tickProduction(w)
+
 	w.RemoveDead()
+	w.RemoveDeadBuildings()
+	w.RemoveDeadCrystals()
 }
 
 func applyCommands(w *World, cmds []Cmd) {
 	for _, cmd := range cmds {
-		u := w.FindUnit(cmd.UnitID)
-		if u == nil || u.State == UnitDead {
-			continue
-		}
-		// Only the owner can command their unit.
-		if u.Owner != cmd.Player {
-			continue
-		}
 		switch cmd.Op {
 		case CmdMove:
+			u := w.FindUnit(cmd.UnitID)
+			if u == nil || u.State == UnitDead || u.Owner != cmd.Player {
+				continue
+			}
+			// Worker right-click on crystal → enter mining loop.
+			crystal := w.FindCrystalAt(cmd.TargetPos)
+			if crystal != nil && u.Type == UnitWorker {
+				u.State = UnitMining
+				u.TargetID = crystal.ID
+				u.MoveTo = crystal.Pos
+				u.CarryAmount = 0
+				continue
+			}
 			u.State = UnitMoving
 			u.MoveTo = cmd.TargetPos
 			u.TargetID = 0
 		case CmdAttack:
-			u.State = UnitIdle // will attack in stepAttack
+			u := w.FindUnit(cmd.UnitID)
+			if u == nil || u.State == UnitDead || u.Owner != cmd.Player {
+				continue
+			}
+			if u.Range <= 0 {
+				continue // Workers can't attack
+			}
+			u.State = UnitIdle
 			u.TargetID = cmd.TargetID
 		case CmdStop:
+			u := w.FindUnit(cmd.UnitID)
+			if u == nil || u.State == UnitDead || u.Owner != cmd.Player {
+				continue
+			}
 			u.State = UnitIdle
 			u.TargetID = 0
+			u.CarryAmount = 0
+		case CmdTrain:
+			applyCmdTrain(w, cmd)
+		// CmdAttackMove, CmdBuild, CmdSurrender — Phase 2/3
 		}
 	}
 }

@@ -42,12 +42,14 @@ func TestStepMove(t *testing.T) {
 func TestStepAttack(t *testing.T) {
 	w := NewWorld(42, 100, 100)
 	// Two adjacent units.
-	w.SpawnUnit(0, fixed.VInt(10, 10), fixed.FromInt(10), fixed.FromFloat64(0.5))
+	id1 := w.SpawnUnit(0, fixed.VInt(10, 10), fixed.FromInt(10), fixed.FromFloat64(0.5))
 	w.SpawnUnit(1, fixed.VInt(11, 10), fixed.FromInt(10), fixed.FromFloat64(0.5))
+	// Set Range on attacker so it can attack.
+	w.Units[0].Range = fixed.FromInt(2)
 
 	// Player 0 attacks player 1's unit.
 	cmds := []Cmd{
-		{Player: 0, Op: CmdAttack, UnitID: 1, TargetID: 2},
+		{Player: 0, Op: CmdAttack, UnitID: id1, TargetID: id1 + 1},
 	}
 	Step(w, cmds)
 

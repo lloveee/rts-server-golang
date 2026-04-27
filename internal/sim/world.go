@@ -251,6 +251,20 @@ func SpawnForGolden(w *World, owner uint8, pos fixed.Vec2, hp, speed fixed.Fix32
 	return w.SpawnUnit(owner, pos, hp, speed)
 }
 
+// FindCrystalAt returns a crystal near the given position (within 2 cells).
+func (w *World) FindCrystalAt(pos fixed.Vec2) *Crystal {
+	for i := range w.Crystals {
+		c := &w.Crystals[i]
+		if c.Remaining <= 0 {
+			continue
+		}
+		if c.Pos.DistSq(pos) <= fixed.FromInt(2).Mul(fixed.FromInt(2)) {
+			return c
+		}
+	}
+	return nil
+}
+
 // RemoveDead removes all dead units.
 func (w *World) RemoveDead() {
 	alive := w.Units[:0]

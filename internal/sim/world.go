@@ -121,6 +121,106 @@ func (w *World) SpawnUnit(owner uint8, pos fixed.Vec2, hp, speed fixed.Fix32) ui
 	return id
 }
 
+// FindEntity returns the entity with the given ID across all lists.
+func (w *World) FindEntity(id uint32) (found bool, unit *Unit, bld *Building, cryst *Crystal) {
+	for i := range w.Units {
+		if w.Units[i].ID == id && w.Units[i].State != UnitDead {
+			return true, &w.Units[i], nil, nil
+		}
+	}
+	for i := range w.Buildings {
+		if w.Buildings[i].ID == id && w.Buildings[i].State != BldDead {
+			return true, nil, &w.Buildings[i], nil
+		}
+	}
+	for i := range w.Crystals {
+		if w.Crystals[i].ID == id && w.Crystals[i].Remaining > 0 {
+			return true, nil, nil, &w.Crystals[i]
+		}
+	}
+	return false, nil, nil, nil
+}
+
+// SpawnBuilding adds a building and returns its ID.
+func (w *World) SpawnBuilding(owner uint8, bldType BuildingType, pos fixed.Vec2) uint32 {
+	stats := BuildingStatTable[bldType]
+	id := w.NextID
+	w.NextID++
+	w.Buildings = append(w.Buildings, Building{
+		ID:        id,
+		Owner:     owner,
+		Type:      bldType,
+		SizeCells: stats.SizeCells,
+		Pos:       pos,
+		HP:        stats.MaxHP,
+		MaxHP:     stats.MaxHP,
+		State:     BldReady,
+	})
+	return id
+}
+
+// SpawnCrystal adds a crystal pile and returns its ID.
+func (w *World) SpawnCrystal(pos fixed.Vec2) uint32 {
+	id := w.NextID
+	w.NextID++
+	w.Crystals = append(w.Crystals, Crystal{
+		ID:        id,
+		Pos:       pos,
+		Remaining: fixed.FromInt(CrystalStartValue),
+	})
+	return id
+}
+
+// sortBuildingsByID sorts buildings in-place ascending by ID.
+func sortBuildingsByID(w *World) {
+	blds := w.Buildings
+	for i := 1; i < len(blds); i++ {
+		key := blds[i]
+		j := i - 1
+		for j >= 0 && blds[j].ID > key.ID {
+			blds[j+1] = blds[j]
+			j--
+		}
+		blds[j+1] = key
+	}
+}
+
+// sortCrystalsByID sorts crystals in-place ascending by ID.
+func sortCrystalsByID(w *World) {
+	crystals := w.Crystals
+	for i := 1; i < len(crystals); i++ {
+		key := crystals[i]
+		j := i - 1
+		for j >= 0 && crystals[j].ID > key.ID {
+			crystals[j+1] = crystals[j]
+			j--
+		}
+		crystals[j+1] = key
+	}
+}
+
+// RemoveDeadBuildings prunes buildings with State == BldDead.
+func (w *World) RemoveDeadBuildings() {
+	alive := w.Buildings[:0]
+	for _, b := range w.Buildings {
+		if b.State != BldDead {
+			alive = append(alive, b)
+		}
+	}
+	w.Buildings = alive
+}
+
+// RemoveDeadCrystals prunes crystals with Remaining <= 0.
+func (w *World) RemoveDeadCrystals() {
+	alive := w.Crystals[:0]
+	for _, c := range w.Crystals {
+		if c.Remaining > 0 {
+			alive = append(alive, c)
+		}
+	}
+	w.Crystals = alive
+}
+
 // FindUnit returns a pointer to the unit with the given ID, or nil.
 // IMPORTANT: pointer is only valid until next append to Units slice.
 func (w *World) FindUnit(id uint32) *Unit {

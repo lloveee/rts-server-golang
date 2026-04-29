@@ -58,6 +58,7 @@ type Room struct {
 
 	// Optional replay writer. If non-nil, every tick is recorded.
 	replayWriter *replay.Writer
+	gameOverSent bool
 
 	mu sync.Mutex // only for external reads (e.g., status query)
 }
@@ -303,6 +304,19 @@ func (r *Room) sealTick() {
 	// but we run it to validate correctness against clients).
 	simCmds := wireCmdsToSimCmds(cmds)
 	sim.Step(r.world, simCmds)
+
+	// Broadcast GameOver if match ended.
+	if r.world.GameOver && !r.gameOverSent {
+		r.gameOverSent = true
+		wr := make([]wire.PlayerResult, len(r.world.GameOverResults))
+		for i, pr := range r.world.GameOverResults {
+			wr[i] = wire.PlayerResult{PlayerID: pr.PlayerID, Result: pr.Result}
+		}
+		d, _ := wire.Encode(&wire.GameOver{Results: wr})
+		for _, p := range r.players {
+			if p != nil && p.Joined && p.Conn != nil { _ = p.Conn.Send(d) }
+		}
+	}
 
 	// Record to replay if writer is attached.
 	if r.replayWriter != nil {

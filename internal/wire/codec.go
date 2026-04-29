@@ -30,6 +30,8 @@ func Encode(msg interface{}) ([]byte, error) {
 		return encodeFeedbackHint(m), nil
 	case *Resume:
 		return encodeResume(m), nil
+	case *GameOver:
+		return encodeGameOver(m), nil
 	default:
 		return nil, errors.New("unknown message type")
 	}
@@ -76,6 +78,9 @@ func Decode(data []byte) (MsgType, interface{}, error) {
 		return msgType, m, err
 	case MsgResume:
 		m, err := decodeResume(payload)
+		return msgType, m, err
+	case MsgGameOver:
+		m, err := decodeGameOver(payload)
 		return msgType, m, err
 	default:
 		return msgType, nil, errors.New("unknown message type")
@@ -395,4 +400,34 @@ func truncStr(s string, max int) string {
 		return s[:max]
 	}
 	return s
+}
+
+func encodeGameOver(m *GameOver) []byte {
+	n := len(m.Results)
+	buf := make([]byte, 1+1+n*2)
+	buf[0] = byte(MsgGameOver)
+	buf[1] = byte(n)
+	for i, r := range m.Results {
+		buf[2+i*2] = r.PlayerID
+		buf[2+i*2+1] = r.Result
+	}
+	return buf
+}
+
+func decodeGameOver(data []byte) (*GameOver, error) {
+	if len(data) < 1 {
+		return nil, errors.New("gameover: too short")
+	}
+	n := int(data[0])
+	if len(data) < 1+n*2 {
+		return nil, errors.New("gameover: truncated")
+	}
+	m := &GameOver{Results: make([]PlayerResult, n)}
+	for i := 0; i < n; i++ {
+		m.Results[i] = PlayerResult{
+			PlayerID: data[1+i*2],
+			Result:   data[1+i*2+1],
+		}
+	}
+	return m, nil
 }

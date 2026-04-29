@@ -19,7 +19,19 @@ const (
 	MsgResume       MsgType = 20
 	MsgResync       MsgType = 21
 	MsgBye          MsgType = 30
+	MsgGameOver     MsgType = 31
 )
+
+// GameOver is broadcast by the server when the match ends.
+type GameOver struct {
+	Results []PlayerResult
+}
+
+// PlayerResult encodes one player's outcome.
+type PlayerResult struct {
+	PlayerID uint8
+	Result   uint8 // 0=Ongoing, 1=Victory, 2=Defeat, 3=Draw
+}
 
 // Hello is sent by the client on connection to negotiate protocol version.
 type Hello struct {

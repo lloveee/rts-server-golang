@@ -6,6 +6,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -58,6 +59,7 @@ func main() {
 	var lastTrainTick uint32
 	var phase = "economy"
 	var soldierIDs []uint32
+	var hasBuiltBarracks bool
 
 	// OnFrame processes each FrameBundle from the server: step sim, hash, and run bot logic.
 	client.OnFrame = func(fb *wire.FrameBundle) {
@@ -95,7 +97,7 @@ func main() {
 				"crystal", crystal.ToInt())
 		}
 
-		botThink(world, myID, fb.Tick, &lastTrainTick, &phase, &soldierIDs, client)
+		botThink(world, myID, fb.Tick, &lastTrainTick, &phase, &soldierIDs, &hasBuiltBarracks, client)
 	}
 
 	go client.RunDispatchLoop()
@@ -164,10 +166,26 @@ func spawnInitialWorld(seed uint64, mapW, mapH int32) *sim.World {
 //     and fewer than 2 workers already assigned.
 //  2. Train a new Worker from HQ when the player has enough crystal and the
 //     training queue is not full.
-func botThink(w *sim.World, myID uint8, tick uint32, lastTrainTick *uint32, phase *string, soldierIDs *[]uint32, client *rtsclient.Client) {
+func botThink(w *sim.World, myID uint8, tick uint32, lastTrainTick *uint32, phase *string, soldierIDs *[]uint32, hasBuiltBarracks *bool, client *rtsclient.Client) {
 	futureTick := tick + 3
 	if int(myID) >= len(w.Players) {
 		return
+	}
+
+	// --- Build Barracks when affordable ---
+	if !*hasBuiltBarracks && *phase != "economy" && w.Players[myID].Crystal >= sim.BuildingStatTable[sim.BldBarracks].Cost {
+		hq := findPlayerHQ(w, myID)
+		if hq != nil {
+			buildPos := fixed.V(hq.Pos.X.Add(fixed.FromInt(6)), hq.Pos.Y)
+			_ = client.SendCmd(&wire.Cmd{
+				Tick: futureTick, Player: myID, Op: uint8(sim.CmdBuild),
+				UnitID: findIdleWorker(w, myID),
+				TargetX: buildPos.X.Raw(), TargetY: buildPos.Y.Raw(),
+				TargetID: uint32(sim.BldBarracks),
+			})
+			*hasBuiltBarracks = true
+			slog.Info("building barracks", "pos", fmt.Sprintf("(%d,%d)", buildPos.X.ToInt(), buildPos.Y.ToInt()))
+		}
 	}
 
 	// --- Phase progression ---
@@ -298,6 +316,17 @@ func findPlayerHQ(w *sim.World, owner uint8) *sim.Building {
 		}
 	}
 	return nil
+}
+
+// findIdleWorker returns the ID of the first idle worker, or 0.
+func findIdleWorker(w *sim.World, owner uint8) uint32 {
+	for i := range w.Units {
+		u := &w.Units[i]
+		if u.Owner == owner && u.Type == sim.UnitWorker && u.State == sim.UnitIdle {
+			return u.ID
+		}
+	}
+	return 0
 }
 
 // findEnemyHQ returns the nearest ready HQ owned by a different player.

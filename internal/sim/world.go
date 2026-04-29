@@ -88,6 +88,66 @@ type World struct {
 	Players   []Player
 
 	NavGrid *NavGrid
+
+	GameOver        bool
+	GameOverResults []PlayerResult
+}
+
+// PlayerResult encodes one player's outcome.
+type PlayerResult struct {
+	PlayerID uint8
+	Result   uint8 // 0=Ongoing, 1=Victory, 2=Defeat, 3=Draw
+}
+
+// Entity is implemented by all sim entity types for combat targeting.
+type Entity interface {
+	IsDead() bool
+	GetPos() fixed.Vec2
+	GetHP() fixed.Fix32
+	SetHP(v fixed.Fix32)
+	SetDead()
+	GetID() uint32
+}
+
+func (u *Unit) IsDead() bool          { return u.State == UnitDead }
+func (u *Unit) GetPos() fixed.Vec2    { return u.Pos }
+func (u *Unit) GetHP() fixed.Fix32    { return u.HP }
+func (u *Unit) SetHP(v fixed.Fix32)   { u.HP = v }
+func (u *Unit) SetDead()              { u.State = UnitDead; u.HP = 0 }
+func (u *Unit) GetID() uint32         { return u.ID }
+
+func (b *Building) IsDead() bool        { return b.State == BldDead }
+func (b *Building) GetPos() fixed.Vec2  { return b.Pos }
+func (b *Building) GetHP() fixed.Fix32  { return b.HP }
+func (b *Building) SetHP(v fixed.Fix32) { b.HP = v }
+func (b *Building) SetDead()            { b.State = BldDead; b.HP = 0 }
+func (b *Building) GetID() uint32       { return b.ID }
+
+func (c *Crystal) IsDead() bool         { return c.Remaining <= 0 }
+func (c *Crystal) GetPos() fixed.Vec2   { return c.Pos }
+func (c *Crystal) GetHP() fixed.Fix32   { return c.Remaining }
+func (c *Crystal) SetHP(v fixed.Fix32)  { c.Remaining = v }
+func (c *Crystal) SetDead()             { c.Remaining = 0 }
+func (c *Crystal) GetID() uint32        { return c.ID }
+
+// FindEntityAny returns any entity by ID as the Entity interface.
+func (w *World) FindEntityAny(id uint32) Entity {
+	for i := range w.Units {
+		if w.Units[i].ID == id && w.Units[i].State != UnitDead {
+			return &w.Units[i]
+		}
+	}
+	for i := range w.Buildings {
+		if w.Buildings[i].ID == id && w.Buildings[i].State != BldDead {
+			return &w.Buildings[i]
+		}
+	}
+	for i := range w.Crystals {
+		if w.Crystals[i].ID == id && w.Crystals[i].Remaining > 0 {
+			return &w.Crystals[i]
+		}
+	}
+	return nil
 }
 
 // NewWorld creates a new world with the given seed and map dimensions.

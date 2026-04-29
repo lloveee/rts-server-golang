@@ -44,8 +44,10 @@ func TestStepAttack(t *testing.T) {
 	// Two adjacent units.
 	id1 := w.SpawnUnit(0, fixed.VInt(10, 10), fixed.FromInt(10), fixed.FromFloat64(0.5))
 	w.SpawnUnit(1, fixed.VInt(11, 10), fixed.FromInt(10), fixed.FromFloat64(0.5))
-	// Set Range on attacker so it can attack.
-	w.Units[0].Range = fixed.FromInt(2)
+	// Set attacker to Soldier type so it has Range and Damage.
+	w.Units[0].Type = UnitSoldier
+	w.Units[0].Range = UnitStatTable[UnitSoldier].Range
+	w.Units[0].Damage = UnitStatTable[UnitSoldier].Damage
 
 	// Player 0 attacks player 1's unit.
 	cmds := []Cmd{
@@ -57,8 +59,8 @@ func TestStepAttack(t *testing.T) {
 	if target == nil {
 		t.Fatal("unit 2 not found")
 	}
-	// HP should have decreased by AttackDamage (0.5).
-	expected := 10.0 - 0.5
+	// HP should have decreased by Soldier damage (1.0).
+	expected := 10.0 - 1.0
 	got := target.HP.ToFloat64()
 	if got < expected-0.01 || got > expected+0.01 {
 		t.Errorf("target HP = %f, want %f", got, expected)

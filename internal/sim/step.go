@@ -29,7 +29,7 @@ func Step(w *World, cmds []Cmd) {
 		case UnitReturning:
 			stepReturning(w, u)
 		case UnitBuilding:
-			// Phase 3
+			stepBuilding(w, u)
 		case UnitAttacking:
 			stepAttackOrAdvance(w, u)
 		case UnitIdle:
@@ -38,6 +38,7 @@ func Step(w *World, cmds []Cmd) {
 	}
 
 	tickProduction(w)
+	tickConstruction(w)
 	resolveCombat(w)
 	applyPushAway(w)
 
@@ -102,6 +103,8 @@ func applyCommands(w *World, cmds []Cmd) {
 			u.CarryAmount = 0
 		case CmdTrain:
 			applyCmdTrain(w, cmd)
+		case CmdBuild:
+			applyCmdBuild(w, cmd)
 		case CmdSurrender:
 			if int(cmd.Player) < len(w.Players) {
 				w.Players[cmd.Player].Surrendered = true

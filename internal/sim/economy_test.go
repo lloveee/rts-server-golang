@@ -133,13 +133,13 @@ func TestCmdTrain_WrongBuildingType(t *testing.T) {
 		Player:   0,
 		Op:       CmdTrain,
 		UnitID:   hqID,
-		TargetID: uint32(UnitSoldier),
+		TargetID: uint32(UnitArcher),
 	}
 	Step(w, []Cmd{cmd})
 
 	hq := w.FindBuilding(hqID)
 	if len(hq.ProductionQueue) != 0 {
-		t.Fatalf("queue length = %d, want 0 (wrong building type)", len(hq.ProductionQueue))
+		t.Fatalf("queue length = %d, want 0 (HQ cannot train Archer)", len(hq.ProductionQueue))
 	}
 }
 

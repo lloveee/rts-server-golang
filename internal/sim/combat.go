@@ -112,14 +112,17 @@ func stepAttackOrAdvance(w *World, u *Unit) {
 			return
 		}
 
-		newPos := fixed.MoveToward(u.Pos, u.AttackMoveTarget, u.Speed)
-		newPos.X = newPos.X.Clamp(0, w.MapSizeX)
-		newPos.Y = newPos.Y.Clamp(0, w.MapSizeY)
-		u.Pos = newPos
-
-		if u.Pos.DistSq(u.AttackMoveTarget) <= fixed.Eps {
-			u.AttackMoveTarget = fixed.VInt(0, 0)
-			u.State = UnitIdle
+		if len(u.Path) > 0 {
+			stepMovePath(w, u)
+		} else {
+			newPos := fixed.MoveToward(u.Pos, u.AttackMoveTarget, u.Speed)
+			newPos.X = newPos.X.Clamp(0, w.MapSizeX)
+			newPos.Y = newPos.Y.Clamp(0, w.MapSizeY)
+			u.Pos = newPos
+			if u.Pos.DistSq(u.AttackMoveTarget) <= fixed.Eps {
+				u.AttackMoveTarget = fixed.VInt(0, 0)
+				u.State = UnitIdle
+			}
 		}
 		return
 	}

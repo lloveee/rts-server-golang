@@ -23,7 +23,11 @@ func Step(w *World, cmds []Cmd) {
 		}
 		switch u.State {
 		case UnitMoving:
-			stepMove(w, u)
+			if len(u.Path) > 0 {
+				stepMovePath(w, u)
+			} else {
+				stepMove(w, u)
+			}
 		case UnitMining:
 			stepMining(w, u)
 		case UnitReturning:
@@ -71,6 +75,7 @@ func applyCommands(w *World, cmds []Cmd) {
 			}
 			u.State = UnitMoving
 			u.MoveTo = cmd.TargetPos
+			u.Path = FindPath(w, u.Pos, cmd.TargetPos)
 			u.TargetID = 0
 		case CmdAttack:
 			u := w.FindUnit(cmd.UnitID)
@@ -92,6 +97,7 @@ func applyCommands(w *World, cmds []Cmd) {
 			}
 			u.State = UnitAttacking
 			u.AttackMoveTarget = cmd.TargetPos
+			u.Path = FindPath(w, u.Pos, cmd.TargetPos)
 			u.TargetID = 0
 		case CmdStop:
 			u := w.FindUnit(cmd.UnitID)

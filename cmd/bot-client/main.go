@@ -171,8 +171,12 @@ func botThink(w *sim.World, myID uint8, tick uint32, lastTrainTick *uint32, phas
 	}
 
 	// --- Phase progression ---
+	if tick%500 == 0 {
+		slog.Info("botThink", "tick", tick, "phase", *phase, "crystal", w.Players[myID].Crystal.ToInt())
+	}
 	if *phase == "economy" && w.Players[myID].Crystal >= fixed.FromInt(150) {
 		*phase = "army"
+		slog.Info("phase -> army", "crystal", w.Players[myID].Crystal.ToInt())
 	}
 	if *phase == "army" {
 		// Collect soldier IDs and count alive.

@@ -69,7 +69,7 @@ var BuildingStatTable = map[BuildingType]BuildingStats{
 		Cost:        fixed.Zero,
 		BuildTicks:  0,
 		SizeCells:   4,
-		Trains:      []UnitType{UnitWorker},
+		Trains:      []UnitType{UnitWorker, UnitSoldier},
 	},
 	BldBarracks: {
 		MaxHP:       fixed.FromInt(400),

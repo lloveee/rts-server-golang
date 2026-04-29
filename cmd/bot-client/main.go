@@ -56,6 +56,8 @@ func main() {
 	// Tick state (read/written only by OnFrame, i.e. sequentially within dispatch goroutine).
 	var lastTick uint32
 	var lastTrainTick uint32
+	var phase = "economy"
+	var soldierIDs []uint32
 
 	// OnFrame processes each FrameBundle from the server: step sim, hash, and run bot logic.
 	client.OnFrame = func(fb *wire.FrameBundle) {
@@ -93,7 +95,7 @@ func main() {
 				"crystal", crystal.ToInt())
 		}
 
-		botThink(world, myID, fb.Tick, &lastTrainTick, client)
+		botThink(world, myID, fb.Tick, &lastTrainTick, &phase, &soldierIDs, client)
 	}
 
 	go client.RunDispatchLoop()
@@ -162,59 +164,84 @@ func spawnInitialWorld(seed uint64, mapW, mapH int32) *sim.World {
 //     and fewer than 2 workers already assigned.
 //  2. Train a new Worker from HQ when the player has enough crystal and the
 //     training queue is not full.
-func botThink(w *sim.World, myID uint8, tick uint32, lastTrainTick *uint32, client *rtsclient.Client) {
-	futureTick := tick + 3 // schedule commands N=3 ticks ahead
+func botThink(w *sim.World, myID uint8, tick uint32, lastTrainTick *uint32, phase *string, soldierIDs *[]uint32, client *rtsclient.Client) {
+	futureTick := tick + 3
+	if int(myID) >= len(w.Players) {
+		return
+	}
 
-	// --- 1. Assign idle workers to crystals ---
+	// --- Phase progression ---
+	if *phase == "economy" && w.Players[myID].Crystal >= fixed.FromInt(150) {
+		*phase = "army"
+	}
+	if *phase == "army" {
+		// Collect soldier IDs and count alive.
+		*soldierIDs = (*soldierIDs)[:0]
+		for i := range w.Units {
+			u := &w.Units[i]
+			if u.Owner == myID && u.Type == sim.UnitSoldier && u.State != sim.UnitDead {
+				*soldierIDs = append(*soldierIDs, u.ID)
+			}
+		}
+		if len(*soldierIDs) >= 5 {
+			*phase = "push"
+		}
+	}
+
+	// --- Always assign idle workers to crystals (all phases) ---
 	for i := range w.Units {
 		u := &w.Units[i]
 		if u.Owner != myID || u.State != sim.UnitIdle || u.Type != sim.UnitWorker {
 			continue
 		}
-
 		best := findBestCrystal(w, u.Pos)
 		if best == nil {
 			continue
 		}
-
 		_ = client.SendCmd(&wire.Cmd{
-			Tick:     futureTick,
-			Player:   myID,
-			Op:       uint8(sim.CmdMove),
-			UnitID:   u.ID,
-			TargetX:  best.Pos.X.Raw(),
-			TargetY:  best.Pos.Y.Raw(),
+			Tick: futureTick, Player: myID, Op: uint8(sim.CmdMove),
+			UnitID: u.ID, TargetX: best.Pos.X.Raw(), TargetY: best.Pos.Y.Raw(),
 		})
 	}
 
-	// --- 2. Train workers from HQ when affordable ---
-	if int(myID) >= len(w.Players) {
-		return
-	}
-	workerCost := sim.UnitStatTable[sim.UnitWorker].Cost
-	if w.Players[myID].Crystal < workerCost {
-		return
-	}
-
-	// Cooldown: don't spam train (30-tick gap between orders).
-	if tick-*lastTrainTick < 30 && *lastTrainTick != 0 {
-		return
+	// --- Train units from HQ ---
+	trainType := sim.UnitWorker
+	var cost fixed.Fix32
+	if *phase == "economy" {
+		trainType = sim.UnitWorker
+		cost = sim.UnitStatTable[sim.UnitWorker].Cost
+	} else {
+		trainType = sim.UnitSoldier
+		cost = sim.UnitStatTable[sim.UnitSoldier].Cost
 	}
 
-	// Find the player's HQ.
-	hq := findPlayerHQ(w, myID)
-	if hq == nil || len(hq.ProductionQueue) >= sim.MaxQueueLength {
-		return
+	if w.Players[myID].Crystal >= cost &&
+		(tick-*lastTrainTick >= 30 || *lastTrainTick == 0) {
+		hq := findPlayerHQ(w, myID)
+		if hq != nil && len(hq.ProductionQueue) < sim.MaxQueueLength {
+			*lastTrainTick = tick
+			_ = client.SendCmd(&wire.Cmd{
+				Tick: futureTick, Player: myID, Op: uint8(sim.CmdTrain),
+				UnitID: hq.ID, TargetID: uint32(trainType),
+			})
+		}
 	}
 
-	*lastTrainTick = tick
-	_ = client.SendCmd(&wire.Cmd{
-		Tick:     futureTick,
-		Player:   myID,
-		Op:       uint8(sim.CmdTrain),
-		UnitID:   hq.ID,
-		TargetID: uint32(sim.UnitWorker),
-	})
+	// --- Phase_push: AttackMove soldiers to enemy HQ ---
+	if *phase == "push" {
+		enemyHQ := findEnemyHQ(w, myID)
+		if enemyHQ != nil {
+			for _, sid := range *soldierIDs {
+				u := w.FindUnit(sid)
+				if u != nil && u.State == sim.UnitIdle {
+					_ = client.SendCmd(&wire.Cmd{
+						Tick: futureTick, Player: myID, Op: uint8(sim.CmdAttackMove),
+						UnitID: sid, TargetX: enemyHQ.Pos.X.Raw(), TargetY: enemyHQ.Pos.Y.Raw(),
+					})
+				}
+			}
+		}
+	}
 }
 
 // findBestCrystal returns the nearest crystal with Remaining > 0 that has
@@ -263,6 +290,17 @@ func findPlayerHQ(w *sim.World, owner uint8) *sim.Building {
 	for i := range w.Buildings {
 		b := &w.Buildings[i]
 		if b.Owner == owner && b.Type == sim.BldHQ && b.State == sim.BldReady {
+			return b
+		}
+	}
+	return nil
+}
+
+// findEnemyHQ returns the nearest ready HQ owned by a different player.
+func findEnemyHQ(w *sim.World, myID uint8) *sim.Building {
+	for i := range w.Buildings {
+		b := &w.Buildings[i]
+		if b.Owner != myID && b.Type == sim.BldHQ && b.State == sim.BldReady {
 			return b
 		}
 	}
